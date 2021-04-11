@@ -485,53 +485,99 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'IGNORE_SPACE,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`%` PROCEDURE `get_equity`(
-												IN p_mode varchar(20),
-												IN p_runID varchar(100),
-												IN p_period varchar(3)
+CREATE DEFINER=`root`@`%` PROCEDURE `get_equity`(
+
+												IN p_mode varchar(20),
+
+												IN p_runID varchar(100),
+
+												IN p_period varchar(3)
+
 											)
-BEGIN
-	
-	SET @period_query = "";
-	IF  p_period = 'YTD' THEN 
-    	SET @period_query = "AND positionCloseTS >= MAKEDATE(YEAR(NOW()), 1)";
-  	ELSEIF p_period = '1Y' THEN 
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 YEAR)";
-  	ELSEIF p_period = '6M' THEN 
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 6 MONTH)";
-  	ELSEIF p_period = '3M' THEN 
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 3 MONTH)";
-  	ELSEIF p_period = '1M' THEN 
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 MONTH)";
-  	ELSEIF p_period = '1W' THEN 
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 WEEK)";
-  	ELSEIF p_period = '1D' THEN 
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 DAY)";
-	END IF;
-		
-	SET @query = CONCAT("
-						 SELECT * FROM (
-							 SELECT 
-								positionCloseTS,
-								profitAndLoss,
-								(@equity := @equity + profitAndLoss) as cumEquity
-							 FROM (
-								SELECT 
-									positionCloseTS,
-									ProfitAndLoss
-								FROM v_positions 
-								WHERE 
-									mode='",p_mode,"' and runID='",p_runID,"'
-								ORDER BY positionCloseTS asc
-								) p, (SELECT @equity := 0) x
-							 ORDER BY positionCloseTS asc
-							) e WHERE 1=1 ",@period_query
-						);
-				
-    PREPARE stmt FROM @query;
-    EXECUTE stmt;
-    DEALLOCATE PREPARE stmt;
-
+BEGIN
+
+	
+
+	SET @period_query = "";
+
+	IF  p_period = 'YTD' THEN 
+
+    	SET @period_query = "AND positionCloseTS >= MAKEDATE(YEAR(NOW()), 1)";
+
+  	ELSEIF p_period = '1Y' THEN 
+
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 YEAR)";
+
+  	ELSEIF p_period = '6M' THEN 
+
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 6 MONTH)";
+
+  	ELSEIF p_period = '3M' THEN 
+
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 3 MONTH)";
+
+  	ELSEIF p_period = '1M' THEN 
+
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 MONTH)";
+
+  	ELSEIF p_period = '1W' THEN 
+
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 WEEK)";
+
+  	ELSEIF p_period = '1D' THEN 
+
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 DAY)";
+
+	END IF;
+
+		
+
+	SET @query = CONCAT("
+
+						 SELECT * FROM (
+
+							 SELECT 
+
+								positionCloseTS,
+
+								profitAndLoss,
+
+								(@equity := @equity + profitAndLoss) as cumEquity
+
+							 FROM (
+
+								SELECT 
+
+									positionCloseTS,
+
+									ProfitAndLoss
+
+								FROM v_positions 
+
+								WHERE 
+
+									mode='",p_mode,"' and runID='",p_runID,"'
+
+								ORDER BY positionCloseTS asc
+
+								) p, (SELECT @equity := 0) x
+
+							 ORDER BY positionCloseTS asc
+
+							) e WHERE 1=1 ",@period_query
+
+						);
+
+				
+
+    PREPARE stmt FROM @query;
+
+    EXECUTE stmt;
+
+    DEALLOCATE PREPARE stmt;
+
+
+
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -548,73 +594,139 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'IGNORE_SPACE,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`%` PROCEDURE `get_profits`(
-												IN p_mode varchar(20),
-												IN p_runID varchar(100),
-												IN p_period varchar(5)
+CREATE DEFINER=`root`@`%` PROCEDURE `get_profits`(
+
+												IN p_mode varchar(20),
+
+												IN p_runID varchar(100),
+
+												IN p_period varchar(5)
+
 											)
-BEGIN
-
-	SET @query = "SELECT 0 as period, 0 as profitAndLoss";
-	
-	IF  p_period = 'YEAR' THEN 
-			SET @query = CONCAT("
-								SELECT 
-									YEAR(positionCloseTS) as period,
-									SUM(profitAndLoss) as profitAndLoss
-								FROM v_positions 
-								WHERE
-									mode='",p_mode,"' and runID='",p_runID,"'
-								GROUP BY 1
-								ORDER BY positionCloseTS asc"
-			);				
-	END IF;
-
-	IF  p_period = 'MONTH' THEN 
-			SET @query = CONCAT("
-								SELECT 
-									CONCAT(MONTHNAME(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
-									SUM(profitAndLoss) as profitAndLoss
-								FROM v_positions 
-								WHERE
-									mode='",p_mode,"' and runID='",p_runID,"'
-								GROUP BY 1
-								ORDER BY positionCloseTS asc"
-			);				
-	END IF;
-
-	IF  p_period = 'WEEK' THEN 
-			SET @query = CONCAT("
-								SELECT 
-									CONCAT(WEEK(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
-									SUM(profitAndLoss) as profitAndLoss
-								FROM v_positions 
-								WHERE
-									mode='",p_mode,"' and runID='",p_runID,"'
-								GROUP BY 1
-								ORDER BY positionCloseTS asc"
-			);				
-	END IF;
-
-	IF  p_period = 'DAY' THEN 
-			SET @query = CONCAT("
-								SELECT 
-									CONCAT(DAYOFYEAR(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
-									SUM(profitAndLoss) as profitAndLoss
-								FROM v_positions
-								WHERE
-									mode='",p_mode,"' and runID='",p_runID,"' 	
-								GROUP BY 1
-								ORDER BY positionCloseTS asc"
-			);				
-	END IF;
-
-
-
-    PREPARE stmt FROM @query;
-    EXECUTE stmt;
-    DEALLOCATE PREPARE stmt;
-	
+BEGIN
+
+
+
+	SET @query = "SELECT 0 as period, 0 as profitAndLoss";
+
+	
+
+	IF  p_period = 'YEAR' THEN 
+
+			SET @query = CONCAT("
+
+								SELECT 
+
+									YEAR(positionCloseTS) as period,
+
+									SUM(profitAndLoss) as profitAndLoss
+
+								FROM v_positions 
+
+								WHERE
+
+									mode='",p_mode,"' and runID='",p_runID,"'
+
+								GROUP BY 1
+
+								ORDER BY positionCloseTS asc"
+
+			);				
+
+	END IF;
+
+
+
+	IF  p_period = 'MONTH' THEN 
+
+			SET @query = CONCAT("
+
+								SELECT 
+
+									CONCAT(MONTHNAME(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
+
+									SUM(profitAndLoss) as profitAndLoss
+
+								FROM v_positions 
+
+								WHERE
+
+									mode='",p_mode,"' and runID='",p_runID,"'
+
+								GROUP BY 1
+
+								ORDER BY positionCloseTS asc"
+
+			);				
+
+	END IF;
+
+
+
+	IF  p_period = 'WEEK' THEN 
+
+			SET @query = CONCAT("
+
+								SELECT 
+
+									CONCAT(WEEK(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
+
+									SUM(profitAndLoss) as profitAndLoss
+
+								FROM v_positions 
+
+								WHERE
+
+									mode='",p_mode,"' and runID='",p_runID,"'
+
+								GROUP BY 1
+
+								ORDER BY positionCloseTS asc"
+
+			);				
+
+	END IF;
+
+
+
+	IF  p_period = 'DAY' THEN 
+
+			SET @query = CONCAT("
+
+								SELECT 
+
+									CONCAT(DAYOFYEAR(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
+
+									SUM(profitAndLoss) as profitAndLoss
+
+								FROM v_positions
+
+								WHERE
+
+									mode='",p_mode,"' and runID='",p_runID,"' 	
+
+								GROUP BY 1
+
+								ORDER BY positionCloseTS asc"
+
+			);				
+
+	END IF;
+
+
+
+
+
+
+
+    PREPARE stmt FROM @query;
+
+    EXECUTE stmt;
+
+    DEALLOCATE PREPARE stmt;
+
+	
+
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -631,19 +743,30 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `REMOVE_runID`(
-	IN `_runID` VARCHAR(100)
+CREATE DEFINER=`root`@`localhost` PROCEDURE `REMOVE_runID`(
+
+	IN `_runID` VARCHAR(100)
+
 )
     COMMENT 'Delete all DB entries of a given runID'
-BEGIN
-	DELETE FROM brokers 		WHERE runID=_runID;
-	DELETE FROM orders		WHERE runID=_runID;
-	DELETE FROM positions	WHERE runID=_runID;
-	DELETE FROM positions_orders WHERE runID=_runID;
-	DELETE FROM transactions WHERE runID=_runID;
-	DELETE FROM candleevents WHERE runID=_runID;
-	DELETE FROM runids WHERE runID=_runID;
-	DELETE FROM strategies WHERE runID=_runID;
+BEGIN
+
+	DELETE FROM brokers 		WHERE runID=_runID;
+
+	DELETE FROM orders		WHERE runID=_runID;
+
+	DELETE FROM positions	WHERE runID=_runID;
+
+	DELETE FROM positions_orders WHERE runID=_runID;
+
+	DELETE FROM transactions WHERE runID=_runID;
+
+	DELETE FROM candleevents WHERE runID=_runID;
+
+	DELETE FROM runids WHERE runID=_runID;
+
+	DELETE FROM strategies WHERE runID=_runID;
+
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -662,15 +785,24 @@ DELIMITER ;
 DELIMITER ;;
 CREATE DEFINER=`root`@`localhost` PROCEDURE `TRUNCATE_ALL`()
     COMMENT 'Empty the whole DB'
-BEGIN
-	TRUNCATE brokers;
-	TRUNCATE orders;
-	TRUNCATE positions;
-	TRUNCATE positions_orders;
-	TRUNCATE transactions;
-	TRUNCATE candleevents;
-	TRUNCATE strategies;
-	TRUNCATE runids;
+BEGIN
+
+	TRUNCATE brokers;
+
+	TRUNCATE orders;
+
+	TRUNCATE positions;
+
+	TRUNCATE positions_orders;
+
+	TRUNCATE transactions;
+
+	TRUNCATE candleevents;
+
+	TRUNCATE strategies;
+
+	TRUNCATE runids;
+
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
