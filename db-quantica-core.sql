@@ -208,6 +208,7 @@ CREATE TABLE `runids` (
 
 LOCK TABLES `runids` WRITE;
 /*!40000 ALTER TABLE `runids` DISABLE KEYS */;
+INSERT INTO `runids` VALUES ('TEST','quantica_user',NULL,'LIVE','INIT','2021-04-14 09:31:57.106945','2021-04-14 09:31:57.106945');
 /*!40000 ALTER TABLE `runids` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -297,7 +298,7 @@ CREATE TABLE `tsRepository` (
 
 LOCK TABLES `tsRepository` WRITE;
 /*!40000 ALTER TABLE `tsRepository` DISABLE KEYS */;
-INSERT INTO `tsRepository` VALUES ('PsycoKiller','notepad','notepad','2021-04-07 13:08:52.996575','2021-04-08 15:18:28.992709');
+INSERT INTO `tsRepository` VALUES ('TEST',NULL,'qexec quantica.tradingsystem.standalone.QuanticaWrapper','2021-04-14 09:42:41.464048','2021-04-14 09:42:41.464048');
 /*!40000 ALTER TABLE `tsRepository` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -485,99 +486,53 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'IGNORE_SPACE,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`%` PROCEDURE `get_equity`(
-
-												IN p_mode varchar(20),
-
-												IN p_runID varchar(100),
-
-												IN p_period varchar(3)
-
+CREATE DEFINER=`root`@`%` PROCEDURE `get_equity`(
+												IN p_mode varchar(20),
+												IN p_runID varchar(100),
+												IN p_period varchar(3)
 											)
-BEGIN
-
-	
-
-	SET @period_query = "";
-
-	IF  p_period = 'YTD' THEN 
-
-    	SET @period_query = "AND positionCloseTS >= MAKEDATE(YEAR(NOW()), 1)";
-
-  	ELSEIF p_period = '1Y' THEN 
-
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 YEAR)";
-
-  	ELSEIF p_period = '6M' THEN 
-
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 6 MONTH)";
-
-  	ELSEIF p_period = '3M' THEN 
-
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 3 MONTH)";
-
-  	ELSEIF p_period = '1M' THEN 
-
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 MONTH)";
-
-  	ELSEIF p_period = '1W' THEN 
-
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 WEEK)";
-
-  	ELSEIF p_period = '1D' THEN 
-
-    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 DAY)";
-
-	END IF;
-
-		
-
-	SET @query = CONCAT("
-
-						 SELECT * FROM (
-
-							 SELECT 
-
-								positionCloseTS,
-
-								profitAndLoss,
-
-								(@equity := @equity + profitAndLoss) as cumEquity
-
-							 FROM (
-
-								SELECT 
-
-									positionCloseTS,
-
-									ProfitAndLoss
-
-								FROM v_positions 
-
-								WHERE 
-
-									mode='",p_mode,"' and runID='",p_runID,"'
-
-								ORDER BY positionCloseTS asc
-
-								) p, (SELECT @equity := 0) x
-
-							 ORDER BY positionCloseTS asc
-
-							) e WHERE 1=1 ",@period_query
-
-						);
-
-				
-
-    PREPARE stmt FROM @query;
-
-    EXECUTE stmt;
-
-    DEALLOCATE PREPARE stmt;
-
-
-
+BEGIN
+	
+	SET @period_query = "";
+	IF  p_period = 'YTD' THEN 
+    	SET @period_query = "AND positionCloseTS >= MAKEDATE(YEAR(NOW()), 1)";
+  	ELSEIF p_period = '1Y' THEN 
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 YEAR)";
+  	ELSEIF p_period = '6M' THEN 
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 6 MONTH)";
+  	ELSEIF p_period = '3M' THEN 
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 3 MONTH)";
+  	ELSEIF p_period = '1M' THEN 
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 MONTH)";
+  	ELSEIF p_period = '1W' THEN 
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 WEEK)";
+  	ELSEIF p_period = '1D' THEN 
+    	SET @period_query = "AND positionCloseTS > DATE_SUB(now(), INTERVAL 1 DAY)";
+	END IF;
+		
+	SET @query = CONCAT("
+						 SELECT * FROM (
+							 SELECT 
+								positionCloseTS,
+								profitAndLoss,
+								(@equity := @equity + profitAndLoss) as cumEquity
+							 FROM (
+								SELECT 
+									positionCloseTS,
+									ProfitAndLoss
+								FROM v_positions 
+								WHERE 
+									mode='",p_mode,"' and runID='",p_runID,"'
+								ORDER BY positionCloseTS asc
+								) p, (SELECT @equity := 0) x
+							 ORDER BY positionCloseTS asc
+							) e WHERE 1=1 ",@period_query
+						);
+				
+    PREPARE stmt FROM @query;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -594,139 +549,73 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'IGNORE_SPACE,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`%` PROCEDURE `get_profits`(
-
-												IN p_mode varchar(20),
-
-												IN p_runID varchar(100),
-
-												IN p_period varchar(5)
-
+CREATE DEFINER=`root`@`%` PROCEDURE `get_profits`(
+												IN p_mode varchar(20),
+												IN p_runID varchar(100),
+												IN p_period varchar(5)
 											)
-BEGIN
-
-
-
-	SET @query = "SELECT 0 as period, 0 as profitAndLoss";
-
-	
-
-	IF  p_period = 'YEAR' THEN 
-
-			SET @query = CONCAT("
-
-								SELECT 
-
-									YEAR(positionCloseTS) as period,
-
-									SUM(profitAndLoss) as profitAndLoss
-
-								FROM v_positions 
-
-								WHERE
-
-									mode='",p_mode,"' and runID='",p_runID,"'
-
-								GROUP BY 1
-
-								ORDER BY positionCloseTS asc"
-
-			);				
-
-	END IF;
-
-
-
-	IF  p_period = 'MONTH' THEN 
-
-			SET @query = CONCAT("
-
-								SELECT 
-
-									CONCAT(MONTHNAME(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
-
-									SUM(profitAndLoss) as profitAndLoss
-
-								FROM v_positions 
-
-								WHERE
-
-									mode='",p_mode,"' and runID='",p_runID,"'
-
-								GROUP BY 1
-
-								ORDER BY positionCloseTS asc"
-
-			);				
-
-	END IF;
-
-
-
-	IF  p_period = 'WEEK' THEN 
-
-			SET @query = CONCAT("
-
-								SELECT 
-
-									CONCAT(WEEK(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
-
-									SUM(profitAndLoss) as profitAndLoss
-
-								FROM v_positions 
-
-								WHERE
-
-									mode='",p_mode,"' and runID='",p_runID,"'
-
-								GROUP BY 1
-
-								ORDER BY positionCloseTS asc"
-
-			);				
-
-	END IF;
-
-
-
-	IF  p_period = 'DAY' THEN 
-
-			SET @query = CONCAT("
-
-								SELECT 
-
-									CONCAT(DAYOFYEAR(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
-
-									SUM(profitAndLoss) as profitAndLoss
-
-								FROM v_positions
-
-								WHERE
-
-									mode='",p_mode,"' and runID='",p_runID,"' 	
-
-								GROUP BY 1
-
-								ORDER BY positionCloseTS asc"
-
-			);				
-
-	END IF;
-
-
-
-
-
-
-
-    PREPARE stmt FROM @query;
-
-    EXECUTE stmt;
-
-    DEALLOCATE PREPARE stmt;
-
-	
-
+BEGIN
+
+	SET @query = "SELECT 0 as period, 0 as profitAndLoss";
+	
+	IF  p_period = 'YEAR' THEN 
+			SET @query = CONCAT("
+								SELECT 
+									YEAR(positionCloseTS) as period,
+									SUM(profitAndLoss) as profitAndLoss
+								FROM v_positions 
+								WHERE
+									mode='",p_mode,"' and runID='",p_runID,"'
+								GROUP BY 1
+								ORDER BY positionCloseTS asc"
+			);				
+	END IF;
+
+	IF  p_period = 'MONTH' THEN 
+			SET @query = CONCAT("
+								SELECT 
+									CONCAT(MONTHNAME(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
+									SUM(profitAndLoss) as profitAndLoss
+								FROM v_positions 
+								WHERE
+									mode='",p_mode,"' and runID='",p_runID,"'
+								GROUP BY 1
+								ORDER BY positionCloseTS asc"
+			);				
+	END IF;
+
+	IF  p_period = 'WEEK' THEN 
+			SET @query = CONCAT("
+								SELECT 
+									CONCAT(WEEK(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
+									SUM(profitAndLoss) as profitAndLoss
+								FROM v_positions 
+								WHERE
+									mode='",p_mode,"' and runID='",p_runID,"'
+								GROUP BY 1
+								ORDER BY positionCloseTS asc"
+			);				
+	END IF;
+
+	IF  p_period = 'DAY' THEN 
+			SET @query = CONCAT("
+								SELECT 
+									CONCAT(DAYOFYEAR(positionCloseTS),'/',RIGHT(YEAR(positionCloseTS),2)) as period,
+									SUM(profitAndLoss) as profitAndLoss
+								FROM v_positions
+								WHERE
+									mode='",p_mode,"' and runID='",p_runID,"' 	
+								GROUP BY 1
+								ORDER BY positionCloseTS asc"
+			);				
+	END IF;
+
+
+
+    PREPARE stmt FROM @query;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+	
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -743,30 +632,19 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `REMOVE_runID`(
-
-	IN `_runID` VARCHAR(100)
-
+CREATE DEFINER=`root`@`localhost` PROCEDURE `REMOVE_runID`(
+	IN `_runID` VARCHAR(100)
 )
     COMMENT 'Delete all DB entries of a given runID'
-BEGIN
-
-	DELETE FROM brokers 		WHERE runID=_runID;
-
-	DELETE FROM orders		WHERE runID=_runID;
-
-	DELETE FROM positions	WHERE runID=_runID;
-
-	DELETE FROM positions_orders WHERE runID=_runID;
-
-	DELETE FROM transactions WHERE runID=_runID;
-
-	DELETE FROM candleevents WHERE runID=_runID;
-
-	DELETE FROM runids WHERE runID=_runID;
-
-	DELETE FROM strategies WHERE runID=_runID;
-
+BEGIN
+	DELETE FROM brokers 		WHERE runID=_runID;
+	DELETE FROM orders		WHERE runID=_runID;
+	DELETE FROM positions	WHERE runID=_runID;
+	DELETE FROM positions_orders WHERE runID=_runID;
+	DELETE FROM transactions WHERE runID=_runID;
+	DELETE FROM candleevents WHERE runID=_runID;
+	DELETE FROM runids WHERE runID=_runID;
+	DELETE FROM strategies WHERE runID=_runID;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -785,24 +663,15 @@ DELIMITER ;
 DELIMITER ;;
 CREATE DEFINER=`root`@`localhost` PROCEDURE `TRUNCATE_ALL`()
     COMMENT 'Empty the whole DB'
-BEGIN
-
-	TRUNCATE brokers;
-
-	TRUNCATE orders;
-
-	TRUNCATE positions;
-
-	TRUNCATE positions_orders;
-
-	TRUNCATE transactions;
-
-	TRUNCATE candleevents;
-
-	TRUNCATE strategies;
-
-	TRUNCATE runids;
-
+BEGIN
+	TRUNCATE brokers;
+	TRUNCATE orders;
+	TRUNCATE positions;
+	TRUNCATE positions_orders;
+	TRUNCATE transactions;
+	TRUNCATE candleevents;
+	TRUNCATE strategies;
+	TRUNCATE runids;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -881,7 +750,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8mb4_unicode_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`%` SQL SECURITY DEFINER */
-/*!50001 VIEW `v_runids` AS select `r`.`mode` AS `mode`,`r`.`status` AS `status`,`r`.`runID` AS `RunID`,`r`.`lastupdateTS` AS `lastupdateTS`,`b`.`balance` AS `accountBalance`,`b`.`investedAmount` AS `investedAmount`,`b`.`PnL` AS `realizedProfit`,`b`.`returnOnAccount` AS `returnOnAccount`,`b`.`brokerID` AS `brokerID`,`b`.`brokerDescription` AS `brokerDescription`,`b`.`initialBalance` AS `initialBalance`,(select `v_brokers`.`returnOnAccount` from `db-quantica-core`.`v_brokers` where `v_brokers`.`runID` = `r`.`runID`) / (select std(`v_positions`.`ProfitAndLoss_pc`) from `db-quantica-core`.`v_positions` where `v_positions`.`runID` = `r`.`runID` and `v_positions`.`positionStatus` = 'CLOSED') AS `sharpeRatio`,(select sum(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` >= 0) / ((select sum(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` < 0) * -1) AS `profitFactor`,`b`.`UPnL` AS `unrealizedProfit`,(select count(`db-quantica-core`.`strategies`.`strategyID`) from `db-quantica-core`.`strategies` where `db-quantica-core`.`strategies`.`runID` = `r`.`runID`) AS `liveStrategies`,(select count(`db-quantica-core`.`positions`.`positionID`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'OPEN') AS `NrOpenPositions`,(select count(`db-quantica-core`.`positions`.`positionID`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` > 0) AS `winTrades`,(select count(`db-quantica-core`.`positions`.`positionID`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` < 0) AS `lossTrades`,(select count(`db-quantica-core`.`positions`.`positionID`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` = 0) AS `oddTrades`,(select max(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED') AS `maxWin`,(select min(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED') AS `maxLoss`,(select avg(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED') AS `avgTrade`,(select avg(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` > 0) AS `avgWinTrade`,(select avg(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` < 0) AS `avgLossTrade` from (`db-quantica-core`.`v_brokers` `b` join `db-quantica-core`.`runids` `r` on(`b`.`runID` = `r`.`runID`)) */;
+/*!50001 VIEW `v_runids` AS select `r`.`mode` AS `mode`,`r`.`status` AS `status`,`r`.`runID` AS `RunID`,`r`.`lastupdateTS` AS `lastupdateTS`,`b`.`balance` AS `accountBalance`,`b`.`investedAmount` AS `investedAmount`,`b`.`PnL` AS `realizedProfit`,`b`.`returnOnAccount` AS `returnOnAccount`,`b`.`brokerID` AS `brokerID`,`b`.`brokerDescription` AS `brokerDescription`,`b`.`initialBalance` AS `initialBalance`,(select `v_brokers`.`returnOnAccount` from `db-quantica-core`.`v_brokers` where `v_brokers`.`runID` = `r`.`runID`) / (select std(`v_positions`.`ProfitAndLoss_pc`) from `db-quantica-core`.`v_positions` where `v_positions`.`runID` = `r`.`runID` and `v_positions`.`positionStatus` = 'CLOSED') AS `sharpeRatio`,(select sum(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` >= 0) / ((select sum(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` < 0) * -1) AS `profitFactor`,`b`.`UPnL` AS `unrealizedProfit`,(select count(`db-quantica-core`.`strategies`.`strategyID`) from `db-quantica-core`.`strategies` where `db-quantica-core`.`strategies`.`runID` = `r`.`runID`) AS `liveStrategies`,(select count(`db-quantica-core`.`positions`.`positionID`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'OPEN') AS `NrOpenPositions`,(select count(`db-quantica-core`.`positions`.`positionID`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` > 0) AS `winTrades`,(select count(`db-quantica-core`.`positions`.`positionID`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` < 0) AS `lossTrades`,(select count(`db-quantica-core`.`positions`.`positionID`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` = 0) AS `oddTrades`,(select max(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED') AS `maxWin`,(select min(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED') AS `maxLoss`,(select avg(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED') AS `avgTrade`,(select avg(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` > 0) AS `avgWinTrade`,(select avg(`db-quantica-core`.`positions`.`profitAndLoss`) from `db-quantica-core`.`positions` where `db-quantica-core`.`positions`.`runID` = `r`.`runID` and `db-quantica-core`.`positions`.`positionStatus` = 'CLOSED' and `db-quantica-core`.`positions`.`profitAndLoss` < 0) AS `avgLossTrade` from (`db-quantica-core`.`runids` `r` left join `db-quantica-core`.`v_brokers` `b` on(`b`.`runID` = `r`.`runID`)) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -895,4 +764,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2021-04-11 14:54:09
+-- Dump completed on 2021-04-14 11:52:07
